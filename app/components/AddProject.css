@@ -1,0 +1,23 @@
+.wrap{
+  display: flex;
+  justify-content: center
+}
+
+.wrap button{
+  border: none;
+  outline: none;
+  background: #FF9090;
+  color: #fff;
+  margin: 0 20px 20px 20px;
+  width: 100%;
+  box-sizing: border-box;
+  height: 40px;
+  font-size: 14px;
+  letter-spacing: 5px;
+  font-weight: 200;
+  /*border-radius: 5px;*/
+}
+
+.wrap button:hover{
+  background: #FF7E7E;
+}
