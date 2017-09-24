@@ -6,7 +6,8 @@ import { observable, action } from 'mobx'
 import Project from './Project'
 import styles from './ProjectList.css'
 
-@inject('projects') @observer
+@inject('projects')
+@observer
 export default class ProjectList extends Component {
   render() {
     return (

@@ -1,6 +1,7 @@
 import { rootStore } from './store';
 import { ipcRenderer as ipc } from 'electron';
 import { action, runInAction, autorun, createTransformer, toJS } from 'mobx';
+import { Project } from './model/projects'
 
 rootStore.ui.toggleLoad()
 
@@ -8,8 +9,19 @@ ipc.send('read-db');
 ipc.on('reply-read-db', (event, state) => {
   console.log(state)
   runInAction(() => {
-    rootStore.projects.list = state.projects
-    rootStore.config = state.config
+    state.projects.forEach((project) => {   // yes
+      rootStore.projects.list.push(new Project(
+        rootStore.projects,
+        project.id,
+        project.path,
+        project.created_at
+      ));
+    });
+    Object.keys(state.config).forEach(key => {
+      if (key in rootStore.config) {
+        rootStore.config[key] = state.config[key]
+      }
+    })
     rootStore.ui.toggleLoad()
   })
 })

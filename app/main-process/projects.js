@@ -1,6 +1,12 @@
-import { ipcMain as ipc, dialog, nativeImage, Notification } from 'electron'
+import { ipcMain as ipc, dialog, nativeImage, Notification, BrowserWindow } from 'electron'
 import db from './db'
 import { resolve } from 'path';
+import fs from 'graceful-fs'
+import crossSpawn from 'cross-spawn'
+import globby from 'globby'
+import { readJsonSync } from 'fs-extra'
+import _ from 'lodash'
+
 
 const show = (title, message) => {
   // const icon = nativeImage.createFromPath(
@@ -36,6 +42,138 @@ const options = {
   properties:['openDirectory']
 }
 
+function needInitPackageJson(path, sender){
+  fs.access(path + '/package.json', fs.constants.R_OK | fs.constants.W_OK, (err) => {
+    if (!err) return;
+
+    dialog.showMessageBox({
+      title: '需要初始化',
+      message: '你添加的项目下面没有 package.json 文件',
+      buttons: ['确认', '取消'],
+      type: 'question'
+    }, (index) => {
+      if(!index == 0) {
+        return sender.send('reply-scan-project', '100') // 没有 package.json 文件
+      };
+      crossSpawn('npm', ['init', '-y'], {
+        cwd: path,
+        stdio: 'ignore'
+      })
+      return sender.send('reply-scan-project', {
+        need: false,
+        packages: [],
+        scripts: {
+          "test": "echo \"Error: no test specified\" && exit 1"
+        },
+        all: {
+          dev: [],
+          prod: []
+        },
+        pkg: readJsonSync(path + '/package.json')
+      })
+    })
+
+  })
+}
+
+ipc.on('run-script', (event, {path, name }) => {
+
+  let win = new BrowserWindow({width: 800, height: 600});
+  let cmd ;
+  win.on('close', () => {
+    win = null
+    if (cmd) {cmd.kill('SIGHUP')}
+  })
+
+  win.webContents.on('did-frame-finish-load', () => {
+    cmd = crossSpawn('npm', ['run', name], {
+      cwd: path
+    });
+
+    cmd.stdout.on('data', (data) => {
+      console.log(data.toString())
+
+      win.webContents.send('data', data.toString())
+    })
+
+    cmd.stdout.on('error', (err) => {
+      console.log(err.toString())
+      win.webContents.send('data', err.toString())
+    })
+
+    cmd.on('close', () => {
+      // win.close()
+    })
+  })
+
+  win.once('ready-to-show', () => {
+    win.show()
+  })
+
+  win.loadURL(`file://${__dirname}/cmd.html`)
+
+
+
+})
+
+ipc.on('scan-project', (event, filepath) => {
+  // 确认是否存在 package.json
+  needInitPackageJson(filepath, event.sender)
+  let scanInfo = {}
+  // 是否有未安装的依赖
+  fs.access(filepath + '/node_modules', fs.constants.R_OK | fs.constants.W_OK, (err) => {
+    console.log(err)
+    const pkg = readJsonSync(filepath + '/package.json')
+    const prod = Object.keys(pkg.dependencies)
+    const dev = Object.keys(pkg.devDependencies)
+    if (err) {
+      scanInfo = {
+        need: true,
+        packages: ['all'],
+        scripts: pkg.scripts,
+        all: {
+          dev,
+          prod,
+        },
+        pkg: pkg,
+      };
+      event.sender.send('reply-scan-project', scanInfo)
+    }else{
+
+        const packages = prod.concat(dev)
+        const packagePaths = packages.map(p => filepath + '/node_modules/' + p)
+        globby(packagePaths).then(results => {
+          const noInstall = _.differenceWith(packages, results, (one, two) => {
+            return _.includes(two, one)
+          })
+          if (noInstall.length == 0) {
+            event.sender.send('reply-scan-project', {
+              need: false,
+              packages: [],
+              scripts: pkg.scripts,
+              all: {
+                dev,
+                prod
+              },
+              pkg,
+            })
+          }else{
+            event.sender.send('reply-scan-project', {
+              need: true,
+              packages: noInstall,
+              scripts: pkg.scripts,
+              all: {
+                dev,
+                prod
+              },
+              pkg
+            })
+          }
+        })
+    }
+  })
+})
+
 ipc.on('add-project', (event, args) => {
   dialog.showOpenDialog(options, filepaths => {
     if(!filepaths) {
@@ -52,7 +190,6 @@ ipc.on('add-project', (event, args) => {
       show("添加失败", `项目：${projectName} 已经存在不能重复添加`)
       return
     }
-
     event.returnValue = first(filepaths);
     show("添加成功", `项目：${projectName} 添加成功`)
   })

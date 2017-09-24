@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>控制台</title>
+</head>
+<body>
+  <div id="cmd"></div>
+  <script>
+      const cmd = document.querySelector('#cmd')
+      const ipc = require('electron').ipcRenderer;
+      ipc.on('data', (event, data)=>{
+        cmd.innerText += data
+      })
+  </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>install packages</title>
+  <style>
+      *{
+        margin: 0;
+        padding: 0;
+        font-family: monospace;
+        box-sizing: border-box;
+      }
+
+      .tt-suggestion.tt-cursor {
+        background-color: #FFE7D9;
+      }
+
+      .package {
+        min-width: 100vw;
+        height: 60px;
+        border: 1px solid #eee;
+        outline: none;
+        padding: 0 10px;
+        font-size: 16px;
+        background: #fff;
+        line-height: 60px;
+        letter-spacing: 2px;
+      }
+      .package-name{
+        margin: 0;
+        font-weight: 100;
+        font-size: 16px;
+      }
+      .package-item{
+        background: #fff;
+        border-bottom: 1px solid #eee;
+        min-width: 100vw;
+        padding: 10px;
+      }
+      .package-item .desc {
+        font-size: 12px;
+      }
+
+      .tt-menu .tt-highlight{
+        color: #FF989C;
+      }
+  </style>
+  <!-- <script src="https://cdn.bootcss.com/jquery/2.2.0/jquery.js"></script> -->
+  <!-- <script src="https://cdn.bootcss.com/typeahead.js/0.11.1/typeahead.bundle.js"></script> -->
+</head>
+<body>
+    <div class="container">
+      <!-- <textarea class="triggered-events"></textarea> -->
+      <form>
+        <div class="typeahead-wrapper">
+          <input id="package" class="package" name="package" type="text" placeholder="搜索你想要的包..." value="" >
+        </div>
+      </form>
+    </div>
+    </div>
+  <script>
+    const ipc = require('electron').ipcRenderer;
+    const shell = require('electron').shell;
+
+    if (typeof require != 'undefined') {
+      global.$ = global.jQuery = require('jquery/dist/jquery.js')
+      global.Bloodhound = require('typeahead.js/dist/bloodhound.js')
+      require('typeahead.js/dist/typeahead.jquery.js')
+      global.Vue = require('vue/dist/vue.common.js')
+    }
+
+    window.onload = () => {
+
+       global.w = new Bloodhound({
+        datumTokenizer: Bloodhound.tokenizers.whitespace,
+        queryTokenizer: Bloodhound.tokenizers.whitespace,
+        identify: (obj) => { return obj.id },
+        local: [{id: '10'}, {id: '20'}]
+       });
+       var package = new Bloodhound({
+         datumTokenizer: Bloodhound.tokenizers.whitespace,
+         queryTokenizer: Bloodhound.tokenizers.whitespace,
+         identify: (obj) => {
+          return obj.package.name;
+        },
+         remote: {
+          url: 'https://api.npms.io/v2/search/suggestions?q=',
+          prepare: (query, settings) => {
+            // console.log(query)
+            // console.log(settings)
+            return 'https://api.npms.io/v2/search/suggestions?q=' + encodeURIComponent(query)
+          },
+          transform: (response) => {
+            // console.log(response.map(p => p.package.name))
+            // return response.map(p => p.package.name)
+            return response;
+          }
+         }
+       })
+
+       window.p = package
+
+
+
+       package.initialize();
+
+       $('.package').typeahead({
+         highlight: true,
+       },
+       {
+         limit: 5,
+         source: package,
+         display: (value) => {
+            return value.package.name;
+         },
+         templates: {
+            footer: (value) => {
+              // return '选择你要按照的包'
+            },
+
+            suggestion: (value) => {
+              console.log(value)
+              return `
+                <div class="package-item">
+                  <h3 class="package-name">${ value.package.name }</h3>
+                  ${ typeof value.package.description != 'undefined' ? `<div class="desc"> ${value.package.description} </div>` : '' }
+
+                </div>
+              `
+            }
+         }
+       }).focus()
+
+       // $('input').on([
+       //   'typeahead:active',
+       //   'typeahead:idle',
+       //   'typeahead:open',
+       //   'typeahead:close',
+       //   'typeahead:change',
+       //   'typeahead:render',
+       //   'typeahead:select',
+       //   'typeahead:autocomplete',
+       //   'typeahead:cursorchange',
+       // ].join(' '), logTypeaheadEvent);
+
+       // $('form').on('submit', () => {
+       //  console.log("submit")
+       // });
+       let currentHomePageLink = null;
+       $('#package').bind('typeahead:select', function(ev, suggestion) {
+          currentHomePageLink = suggestion.package.links.homepage;
+       });
+
+
+       function openLink(){
+        console.log(currentHomePageLink)
+        if (currentHomePageLink) {
+          shell.openExternal(currentHomePageLink)
+        }else if($('#package').typeahead('package').val()){
+          const name = $('#package').typeahead('package').val();
+          package.search([name], (arr) => {
+            if (arr[0]) {
+              shell.openExternal(arr[0].package.links.homepage)
+            }
+          }, (arr) => {
+            if (arr[0]) {
+              shell.openExternal(arr[0].package.links.homepage)
+            }
+          })
+        }
+       }
+       ipc.removeListener('select-current-enter-github-page', openLink)
+       ipc.on('select-current-enter-github-page', openLink)
+
+       // function logSubmitEvent($e) {
+       //   var text;
+       //   $e && $e.preventDefault();
+       //   text = JSON.stringify($(this).serializeArray());
+       //   writeToTextarea('submit', text);
+       // }
+
+       // function logTypeaheadEvent($e) {
+       //   var args, type, text;
+       //   args = [].slice.call(arguments, 1);
+       //   type = $e.type;
+       //   text = window.JSON ? JSON.stringify(args) : '';
+       //   writeToTextarea(type, text);
+       // }
+
+       // function writeToTextarea(/* lines */) {
+       //   var $textarea, val, text;
+       //   $textarea = $('.triggered-events');
+       //   val = $textarea.val();
+       //   text = [].join.call(arguments, '\n');
+       //   $textarea.val([val, text, '\n'].join('\n'));
+       //   $textarea[0].scrollTop = $textarea[0].scrollHeight;
+       // }
+
+
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+        "version": "0.2.0",
+        "configurations": [
+          {
+            "type": "node",
+            "request": "launch",
+            "name": "Electron Main",
+            "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron",
+            "program": "${workspaceRoot}/index",
+            "env": {
+              "HOT": "1",
+              "NODE_ENV": "development"
+            },
+            "protocol": "auto"
+          },
+          {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach",
+            "port": 33641,
+            "address": "localhost"
+          }
+
+        ]
+    }

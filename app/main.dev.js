@@ -10,7 +10,7 @@
  *
  * @flow
  */
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain as ipc } from 'electron';
 import MenuBuilder from './menu';
 
 import './main-process/projects'
@@ -55,6 +55,9 @@ app.on('window-all-closed', () => {
   }
 });
 
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
+})
 
 app.on('ready', async () => {
   if (process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true') {
@@ -70,6 +73,51 @@ app.on('ready', async () => {
   });
 
   mainWindow.loadURL(`file://${__dirname}/app.html`);
+
+  let installPanel = null
+  let first = true;
+  // 进入项目主页
+  globalShortcut.register('command+enter', () => {
+    installPanel.webContents.send('select-current-enter-github-page')
+  })
+
+  // 选择当前包进行安装
+  // globalShortcut.register('enter', () => {
+  //   installPanel.webContents.send('select-current')
+  // })
+
+  const ret = globalShortcut.register('Command+`', () => {
+    if (installPanel == null) {
+      installPanel = new BrowserWindow({
+        width: 800,
+        height: 600,
+        transparent: true,
+        frame: false,
+        show: true
+      })
+      installPanel.loadURL('file://' + __dirname + '/panel.html')
+    }
+
+    installPanel.flashFrame(false)
+    installPanel.setKiosk(false)
+    installPanel.setHasShadow(false)
+
+    if (installPanel.isVisible() && !first) {
+      installPanel.hide()
+    }else{
+      installPanel.show()
+    }
+
+    installPanel.webContents.on('did-finish-load', () => {
+      first = false;
+      installPanel.show()
+      installPanel.webContents.openDevTools()
+    });
+})
+
+  if (!ret) {
+    console.log('注册失败')
+  }
 
   // @TODO: Use 'ready-to-show' event
   //        https://github.com/electron/electron/blob/master/docs/api/browser-window.md#using-ready-to-show-event

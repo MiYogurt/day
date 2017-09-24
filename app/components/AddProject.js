@@ -11,7 +11,10 @@ export default class AddProjectButton extends Component {
   @action.bound
   openFile(){
     const filePath = ipc.sendSync('add-project')
-    if(filePath) this.props.projects.add(filePath)
+    if(filePath) {
+      this.props.projects.add(filePath)
+      ipc.send('scan-project', filePath)
+    }
   }
   render() {
     return (

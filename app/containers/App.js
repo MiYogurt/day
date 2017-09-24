@@ -4,6 +4,9 @@ import type { Children } from 'react';
 import DevTools from 'mobx-react-devtools';
 import Loading from '../components/Loading'
 
+
+console.log(Loading)
+
 export default class App extends Component {
   props: {
     children: Children

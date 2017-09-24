@@ -7,7 +7,7 @@ import './app.global.css';
 
 import './syncData'
 
-
+window.store = store;
 
 render(
   <AppContainer>

@@ -1,4 +1,5 @@
 @import "~font-awesome/css/font-awesome.css";
+@import './containers/Project.css';
 
 .loading{
   display: flex;
@@ -12,6 +13,7 @@
   top: 0;
   -webkit-app-region: drag;
   background: #E8ECF3;
+  z-index: 20;
 }
 
 .loading div{
@@ -49,7 +51,7 @@ li {
 }
 
 a {
-  color: white;
+  color: #333;
   opacity: 0.75;
   text-decoration: none;
 }

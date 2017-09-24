@@ -175,7 +175,12 @@ export default merge.smart(baseConfig, {
     filename: '[name].dev.dll.js',
     libraryTarget: 'var'
   },
-
+  resolve: {
+    alias: {
+      'react': "preact-compat",
+      'react-dom': "preact-compat"
+    }
+  }
   plugins: [
     new webpack.DllPlugin({
       path: path.join(dist, '[name].json'),

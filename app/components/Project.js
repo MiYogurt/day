@@ -19,7 +19,6 @@ export default class Project extends Component {
   }
   @action.bound
   del(){
-    console.log(this.props.project.remove) // undefined
     this.props.projects.remove(this.props.project) // it's work
   }
   render() {
@@ -31,7 +30,7 @@ export default class Project extends Component {
             · · ·
             <menu className={ styles.menu } style={{ display: this.show ? 'block': 'none' }}>
               <ul>
-                <li><a href="javascript:void(0);">进入详情</a></li>
+                <li><Link to={"/proj/" + this.props.project.id} >进入详情</Link></li>
                 <li><a href="javascript:void(0);">重新扫描</a></li>
                 <li><a href="javascript:void(0);" onClick={this.del}>删除项目</a></li>
               </ul>

@@ -1,9 +1,10 @@
 import React, { Component } from 'react';
 import { inject, observer } from 'mobx-react'
 
-const Loading = inject('ui')(observer(({ loading }) => (
+const Loading = inject('ui')(observer(({ ui }) => {
+  return(
   <div className="loading" style={{
-    display: loading ? 'block': 'none'
+    display: ui.loading ? 'flex': 'none'
   }}>
     <svg version="1.0" width="64px" height="64px" viewBox="0 0 128 128">
       <g transform="translate(0,128) scale(1,-1)">
@@ -13,7 +14,7 @@ const Loading = inject('ui')(observer(({ loading }) => (
     </svg>
     <div>载入中...</div>
   </div>
-)))
+)}))
 
 Loading.displayName = 'Loading'
 
