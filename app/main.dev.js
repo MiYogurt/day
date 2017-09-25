@@ -82,9 +82,10 @@ app.on('ready', async () => {
   })
 
   // 选择当前包进行安装
-  // globalShortcut.register('enter', () => {
-  //   installPanel.webContents.send('select-current')
-  // })
+  globalShortcut.register('alt+t', () => {
+    installPanel.webContents.send('select')
+    console.log("select")
+  })
 
   const ret = globalShortcut.register('Command+`', () => {
     if (installPanel == null) {

@@ -77,33 +77,48 @@ function needInitPackageJson(path, sender){
 }
 
 ipc.on('run-script', (event, {path, name }) => {
+  console.log(path)
+  console.log(name)
 
   let win = new BrowserWindow({width: 800, height: 600});
   let cmd ;
+
   win.on('close', () => {
     win = null
     if (cmd) {cmd.kill('SIGHUP')}
   })
 
   win.webContents.on('did-frame-finish-load', () => {
-    cmd = crossSpawn('npm', ['run', name], {
-      cwd: path
-    });
+      let argsArr = name.split(' ')
+      console.log(argsArr)
+      if (!(argsArr.includes('i') || argsArr.includes('install'))) {
+        argsArr.unshift('run')
+      }
+      console.log(argsArr)
+      cmd = crossSpawn('npm', argsArr, {
+        cwd: path
+      });
+      win.webContents.send('data', '正在安装，请耐心等待');
 
-    cmd.stdout.on('data', (data) => {
-      console.log(data.toString())
+      cmd.stdout.on('data', (data) => {
+        console.log(data.toString())
+        win.webContents.send('data', data.toString())
+      })
 
-      win.webContents.send('data', data.toString())
-    })
+      cmd.stderr.on('data', (data) => {
+        console.log(data.toString())
+        win.webContents.send('data', data.toString())
+      })
 
-    cmd.stdout.on('error', (err) => {
-      console.log(err.toString())
-      win.webContents.send('data', err.toString())
-    })
-
-    cmd.on('close', () => {
-      // win.close()
-    })
+      cmd.on('close', (exitCode) => {
+        console.log(event)
+        if(exitCode){
+          win.webContents.send('data', "错误退出")
+        }else{
+          win.webContents.send('data', "正常退出")
+          // win.close()
+        }
+      })
   })
 
   win.once('ready-to-show', () => {

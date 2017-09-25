@@ -44,19 +44,74 @@
       .tt-menu .tt-highlight{
         color: #FF989C;
       }
+      .selected{
+        color: #6638F0;
+      }
+
+      #app {
+        background: #fff;
+      }
+      #aap .project-list{
+        /*padding: 10px;*/
+      }
+      .project-item{
+        padding: 10px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      #input.hidden{
+        display: none;
+      }
+      #app footer{
+        padding: 10px;
+        border-top: 1px solid #eee;
+        overflow: hidden;
+      }
+
+      #app footer .left,
+      #app footer .right{
+        display: inline-block;
+        background: #FF989C;
+        cursor: pointer;
+        height: 30px;
+        line-height: 30px;
+        text-align: center;
+        width: 80px;
+        color: #fff;
+      }
+
+      #app footer .left{
+        float: left;
+      }
+
+      #app footer .right{
+        float: right;
+      }
+
+
   </style>
-  <!-- <script src="https://cdn.bootcss.com/jquery/2.2.0/jquery.js"></script> -->
-  <!-- <script src="https://cdn.bootcss.com/typeahead.js/0.11.1/typeahead.bundle.js"></script> -->
 </head>
 <body>
     <div class="container">
-      <!-- <textarea class="triggered-events"></textarea> -->
-      <form>
+      <form id="input">
         <div class="typeahead-wrapper">
           <input id="package" class="package" name="package" type="text" placeholder="搜索你想要的包..." value="" >
         </div>
       </form>
-    </div>
+      <div id="app">
+        <ul v-show="show" class="project-list">
+          <li class="project-item"
+          v-for="pro,index in projects"
+          v-bind:class="{'selected' : selectIndex == index }"
+          v-on:click="select(index)">
+            {{ pro.path }}
+          </li>
+        </ul>
+        <footer  v-show="show" >
+          <div class="left" @click="back">返回</div>
+          <div class="right" @click="ok">确认</div>
+        </footer>
     </div>
   <script>
     const ipc = require('electron').ipcRenderer;
@@ -70,13 +125,7 @@
     }
 
     window.onload = () => {
-
-       global.w = new Bloodhound({
-        datumTokenizer: Bloodhound.tokenizers.whitespace,
-        queryTokenizer: Bloodhound.tokenizers.whitespace,
-        identify: (obj) => { return obj.id },
-        local: [{id: '10'}, {id: '20'}]
-       });
+      $(document).on('keyup', console.log)
        var package = new Bloodhound({
          datumTokenizer: Bloodhound.tokenizers.whitespace,
          queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -84,6 +133,7 @@
           return obj.package.name;
         },
          remote: {
+          rateLimitWait: 100,
           url: 'https://api.npms.io/v2/search/suggestions?q=',
           prepare: (query, settings) => {
             // console.log(query)
@@ -97,10 +147,6 @@
           }
          }
        })
-
-       window.p = package
-
-
 
        package.initialize();
 
@@ -131,29 +177,14 @@
          }
        }).focus()
 
-       // $('input').on([
-       //   'typeahead:active',
-       //   'typeahead:idle',
-       //   'typeahead:open',
-       //   'typeahead:close',
-       //   'typeahead:change',
-       //   'typeahead:render',
-       //   'typeahead:select',
-       //   'typeahead:autocomplete',
-       //   'typeahead:cursorchange',
-       // ].join(' '), logTypeaheadEvent);
-
-       // $('form').on('submit', () => {
-       //  console.log("submit")
-       // });
        let currentHomePageLink = null;
+       let currentPackageName = null;
        $('#package').bind('typeahead:select', function(ev, suggestion) {
           currentHomePageLink = suggestion.package.links.homepage;
+          currentPackageName = suggestion.package.name
        });
 
-
        function openLink(){
-        console.log(currentHomePageLink)
         if (currentHomePageLink) {
           shell.openExternal(currentHomePageLink)
         }else if($('#package').typeahead('package').val()){
@@ -169,32 +200,54 @@
           })
         }
        }
+
        ipc.removeListener('select-current-enter-github-page', openLink)
        ipc.on('select-current-enter-github-page', openLink)
 
-       // function logSubmitEvent($e) {
-       //   var text;
-       //   $e && $e.preventDefault();
-       //   text = JSON.stringify($(this).serializeArray());
-       //   writeToTextarea('submit', text);
-       // }
+       ipc.removeListener('select', select)
+       ipc.on('select', select)
 
-       // function logTypeaheadEvent($e) {
-       //   var args, type, text;
-       //   args = [].slice.call(arguments, 1);
-       //   type = $e.type;
-       //   text = window.JSON ? JSON.stringify(args) : '';
-       //   writeToTextarea(type, text);
-       // }
+       let vm  = new Vue({
+        el: '#app',
+        data: {
+          show: false,
+          projects: [{ path: '全局'} ],
+          selectIndex: 0
+        },
+        methods: {
+          select(index){
+            this.selectIndex = index
+          },
+          ok(){
+            if (!currentPackageName) {
+              currentPackageName = $('#package').typeahead('package').val();
+            }
+            if (this.selectIndex == 0) {
+              ipc.send('run-script', { path: require('os').homedir(), name: 'i -g ' + currentPackageName})
+            }else{
+              ipc.send('run-script', { path: this.projects[this.selectIndex].path, name: 'i ' + currentPackageName})
+            }
+            this.back()
+            $('#package').val('')
+          },
+          back(){
+            $('#input').removeClass('hidden')
+            this.show = false
+          }
+        }
+       })
 
-       // function writeToTextarea(/* lines */) {
-       //   var $textarea, val, text;
-       //   $textarea = $('.triggered-events');
-       //   val = $textarea.val();
-       //   text = [].join.call(arguments, '\n');
-       //   $textarea.val([val, text, '\n'].join('\n'));
-       //   $textarea[0].scrollTop = $textarea[0].scrollHeight;
-       // }
+       function select(){
+          $('#input').addClass('hidden')
+          ipc.send('read-db');
+          ipc.on('reply-read-db', (event, state) => {
+            console.log(state)
+            vm.projects = [{ path: '全局'} ].concat(state.projects)
+            vm.show = true;
+            console.log(vm)
+          })
+       }
+
 
 
     }
